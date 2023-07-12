@@ -18,45 +18,54 @@ var data embed.FS
 // Function that calls the creation of the json file to upload the data to the index, calls data upload to index and creates profiles to record performance
 func RunFilesIndexer() error{
 	indexConfig, err := variablesHandler.LoadEnvVariables()
-
-	//Create cpu profile file
-	cpuProfileFile, err := os.Create("zincsearchIndexer/data/cpuProfile.pprof")
 	if err != nil {
-		return fmt.Errorf("Error al crear archivo de perfil de CPI: %v", err)
+		return fmt.Errorf("Error al cargar variables de entorno: %v", err)
 	}
-	defer cpuProfileFile.Close()
-
-	if err := pprof.StartCPUProfile(cpuProfileFile); err != nil {
-		return fmt.Errorf("Error al iniciar el perfil de CPU: %v", err)
-	}
-	defer pprof.StopCPUProfile()
-
-	//Default root folder where enron email files are located
-	rootFolder := "C:/Users/USUARIO/Desktop/Sabrina/Go/src/PruebaTecnica/enron_mail_20110402/maildir"
-
-	//name of the .json file that contains all emails files information
-	filepath := fmt.Sprintf("zincsearchIndexer/data/%s.json", indexConfig.IndexName)
-	err = CreateJsonFile(rootFolder, filepath, indexConfig.IndexName)
-	if err != nil {
-		return fmt.Errorf("Error al crear archivo json: %v", err)
-	}
-
 	indexExists, err := validateIndexExistence(indexConfig)
+	if err != nil {
+		return fmt.Errorf("Error al validar existencia de índice: %v", err)
+	}
 	if !indexExists {
+		//Create cpu profile file
+		cpuProfileFile, err := os.Create("zincsearchIndexer/data/cpuProfile.pprof")
+		if err != nil {
+			return fmt.Errorf("Error al crear archivo de perfil de CPU: %v", err)
+		}
+		defer cpuProfileFile.Close()
+
+		err = pprof.StartCPUProfile(cpuProfileFile);
+		if err != nil {
+			return fmt.Errorf("Error al iniciar el perfil de CPU: %v", err)
+		}
+		defer pprof.StopCPUProfile()
+
+		//Default root folder where enron email files are located
+		rootFolder := "C:/Users/USUARIO/Desktop/Sabrina/Go/src/PruebaTecnica/enron_mail_20110402/maildir"
+
+		//name of the .json file that contains all emails files information
+		filepath := fmt.Sprintf("zincsearchIndexer/data/%s.json", indexConfig.IndexName)
+		err = CreateJsonFile(rootFolder, filepath, indexConfig.IndexName)
+		if err != nil {
+			return fmt.Errorf("Error al crear archivo json: %v", err)
+		}
+		
 		fmt.Printf("El índice %s está creándose...\n", indexConfig.IndexName)
 		//Upload .json file data to index if it doesn't exist
 		uploadDataToIndex(filepath, indexConfig)
-	} else{ fmt.Printf("El índice %s ya existe\n", indexConfig.IndexName)}
 
+		//Create memory profile file
+		memoryProfileFile, err := os.Create("zincsearchIndexer/data/memoryProfile.pprof")
+		if err != nil {
+			return fmt.Errorf("Error al crear archivo de perfil de memoria: %v", err)
+		}
+		defer memoryProfileFile.Close()
 
-	//Create memory profile file
-	memoryProfileFile, err := os.Create("zincsearchIndexer/data/memoryProfile.pprof")
-	if err != nil {
-		return fmt.Errorf("Error al crear archivo de perfil de memoria: %v", err)
-	}
-	defer memoryProfileFile.Close()
-	if err := pprof.WriteHeapProfile(memoryProfileFile); err != nil {
-		return fmt.Errorf("Error al escribir el perfil de memoria: %v", err)
+		err = pprof.WriteHeapProfile(memoryProfileFile)
+		if err != nil {
+			return fmt.Errorf("Error al escribir el perfil de memoria: %v", err)
+		}
+	} else{ 
+		fmt.Printf("El índice %s ya existe\n", indexConfig.IndexName)
 	}
 
 	return nil
@@ -100,6 +109,10 @@ func uploadDataToIndex(filepath string, indexConfig variablesHandler.IdexConfig)
 // Function that validates if the index exists
 func validateIndexExistence(indexConfig variablesHandler.IdexConfig) (bool, error) {
 	indexConfig, err := variablesHandler.LoadEnvVariables()
+	if err != nil {
+		return false, err
+	}
+	
 	var url string = fmt.Sprintf("%s/index/%s", indexConfig.BaseUrl, indexConfig.IndexName)
 
 	validateIndexExistenceReq, err := http.NewRequest(http.MethodHead, url, nil)

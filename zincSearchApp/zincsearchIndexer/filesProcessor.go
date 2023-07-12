@@ -13,7 +13,7 @@ import (
 	"github.com/zincsearch_enron_challenge_go/zincSearchApp/models"
 )
 
-//Function that walks all the files in the specified directory and processes its content
+// Function that walks all the files in the specified directory and processes its content
 func processFilesInFolder(folderPath string) ([]models.Mail, error) {
 	var mailArray []models.Mail = make([]models.Mail, 0)
 	var wg sync.WaitGroup
@@ -49,7 +49,7 @@ func processFilesInFolder(folderPath string) ([]models.Mail, error) {
 	return mailArray, nil
 }
 
-//Function that opens and reads the file and creates a Mail object for each one
+// Function that opens and reads the file and creates a Mail object for each one
 func processFile(filePath string, ch chan models.Mail, wg *sync.WaitGroup) {
 	defer wg.Done()
 
@@ -104,10 +104,10 @@ func processFile(filePath string, ch chan models.Mail, wg *sync.WaitGroup) {
 	ch <- mail
 }
 
-//Function that returns the content associated with the key
+// Function that returns the content associated with the key
 func extractValue(content, key string, possibleNextKey string) string {
 	finalIndex := len(content)
-	//validate if the file contains a thread of mails 
+	//validate if the file contains a thread of mails
 	if strings.Contains(content, "-----Original Message-----") {
 		finalIndex = strings.Index(content, "-----Original Message-----")
 	}
@@ -126,15 +126,15 @@ func extractValue(content, key string, possibleNextKey string) string {
 	}
 
 	endIndex := strings.Index(content[startIndex:finalIndex], possibleNextKey)
-	
+
 	if endIndex == -1 {
 		//if the file doesn't contain the specfied next key, it finds the next existent key by looking for the next ":" from startIndex
-		nextKeyIndex := strings.Index(content[startIndex:], ":")+1
+		nextKeyIndex := strings.Index(content[startIndex:], ":") + 1
 		//it looks for the last line break from startIndex to nextKeyIndex
 		endIndex = strings.LastIndex(content[startIndex:startIndex+nextKeyIndex], "\n")
 		if endIndex == -1 {
 			//in case the ":" found is in the same line of the key, there won't be any break line, so it looks for the next ":" from the previous one
-			nextKeyIndex2 := strings.Index(content[startIndex+nextKeyIndex:], ":")+1
+			nextKeyIndex2 := strings.Index(content[startIndex+nextKeyIndex:], ":") + 1
 			endIndex = strings.LastIndex(content[startIndex:startIndex+nextKeyIndex+nextKeyIndex2], "\n")
 
 			//if there's still no endIndex, return empty string
@@ -146,7 +146,7 @@ func extractValue(content, key string, possibleNextKey string) string {
 	return strings.TrimSpace(content[startIndex : endIndex+startIndex])
 }
 
-//Function that calls files processing and creates the json file that holds the information of every email
+// Function that calls files processing and creates the json file that holds the information of every email
 func CreateJsonFile(rootFolder string, fileName string, indexName string) error {
 	if _, err := os.Stat(fileName); os.IsNotExist(err) {
 		// El archivo no existe, se puede crear
@@ -154,7 +154,7 @@ func CreateJsonFile(rootFolder string, fileName string, indexName string) error 
 		if err != nil {
 			return fmt.Errorf("Error al procesar los archivos: %v", err)
 		}
-		var request models.IndexRequest
+		var request models.IndexBulkRequest
 		request.Index = indexName
 		request.Records = mailsArray
 

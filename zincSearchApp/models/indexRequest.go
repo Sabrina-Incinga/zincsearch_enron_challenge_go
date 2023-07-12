@@ -1,6 +1,6 @@
 package models
 
-type IndexRequest struct {
+type IndexBulkRequest struct {
 	Index   string `json:"index"`
 	Records []Mail `json:"records"`
 }
