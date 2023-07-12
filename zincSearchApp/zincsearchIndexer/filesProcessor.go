@@ -1,4 +1,4 @@
-package main
+package zincsearchIndexer
 
 import (
 	"bufio"
@@ -13,13 +13,15 @@ import (
 	"github.com/zincsearch_enron_challenge_go/zincSearchApp/models"
 )
 
-func processFilesInFolder(mailArray *[]models.Mail, folderPath string) error {
+//Function that walks all the files in the specified directory and processes its content
+func processFilesInFolder(folderPath string) ([]models.Mail, error) {
+	var mailArray []models.Mail = make([]models.Mail, 0)
 	var wg sync.WaitGroup
 	ch := make(chan models.Mail)
 
 	err := filepath.WalkDir(folderPath, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
-			log.Fatal(err)
+			return err
 		}
 		if !d.IsDir() {
 			wg.Add(1)
@@ -28,7 +30,7 @@ func processFilesInFolder(mailArray *[]models.Mail, folderPath string) error {
 		return nil
 	})
 	if err != nil {
-		return err
+		return mailArray, err
 	}
 
 	go func() {
@@ -41,12 +43,13 @@ func processFilesInFolder(mailArray *[]models.Mail, folderPath string) error {
 		counter += 1
 		mail.ID = counter
 
-		*mailArray = append(*mailArray, mail)
+		mailArray = append(mailArray, mail)
 	}
 
-	return nil
+	return mailArray, nil
 }
 
+//Function that opens and reads the file and creates a Mail object for each one
 func processFile(filePath string, ch chan models.Mail, wg *sync.WaitGroup) {
 	defer wg.Done()
 
@@ -78,55 +81,83 @@ func processFile(filePath string, ch chan models.Mail, wg *sync.WaitGroup) {
 	body := extractValue(fileContent, xFileName, "")
 
 	mail := models.Mail{
-		MessageID: messageID,
-		Date:      date,
-		From:      from,
-		To:        to,
-		Subject:   subject,
-		Cc: cc,
-		MimeVersion: mimeVersion,
-		ContentType: contentType,
+		MessageID:               messageID,
+		Date:                    date,
+		From:                    from,
+		To:                      to,
+		Subject:                 subject,
+		Cc:                      cc,
+		MimeVersion:             mimeVersion,
+		ContentType:             contentType,
 		ContentTransferEncoding: contentTransferEncoding,
-		Bcc: bcc,
-		XFrom: xFrom,
-		XTo: xTo,
-		Xcc: xcc,
-		Xbcc: xbcc,
-		XFolder: xFolder,
-		XOrigin: xOrigin,
-		XFileName: xFileName,
-		Body: body,
+		Bcc:                     bcc,
+		XFrom:                   xFrom,
+		XTo:                     xTo,
+		Xcc:                     xcc,
+		Xbcc:                    xbcc,
+		XFolder:                 xFolder,
+		XOrigin:                 xOrigin,
+		XFileName:               xFileName,
+		Body:                    body,
 	}
 
 	ch <- mail
 }
 
+//Function that returns the content associated with the key
 func extractValue(content, key string, possibleNextKey string) string {
-	startIndex := strings.Index(content, key)
+	finalIndex := len(content)
+	//validate if the file contains a thread of mails 
+	if strings.Contains(content, "-----Original Message-----") {
+		finalIndex = strings.Index(content, "-----Original Message-----")
+	}
+
+	//finds the index of the key between the begining of the file and the end of it, considering the end of the file the beginning of the thread if there's one
+	startIndex := strings.Index(content[:finalIndex], key)
 	if startIndex == -1 {
 		return ""
 	}
 
 	startIndex += len(key)
 
+	//If there's no next key, it means it's the body of the mail, hence it takes the whole content from startIndex
 	if possibleNextKey == "" {
 		return strings.TrimSpace(content[startIndex:])
 	}
 
-	endIndex := strings.Index(content[startIndex:], possibleNextKey)
+	endIndex := strings.Index(content[startIndex:finalIndex], possibleNextKey)
+	
 	if endIndex == -1 {
-		nextKeyIndex := strings.Index(content[startIndex:], ":")
-		endIndex = strings.LastIndex(content[startIndex:startIndex+nextKeyIndex], "\n") 
+		//if the file doesn't contain the specfied next key, it finds the next existent key by looking for the next ":" from startIndex
+		nextKeyIndex := strings.Index(content[startIndex:], ":")+1
+		//it looks for the last line break from startIndex to nextKeyIndex
+		endIndex = strings.LastIndex(content[startIndex:startIndex+nextKeyIndex], "\n")
 		if endIndex == -1 {
-			return ""
+			//in case the ":" found is in the same line of the key, there won't be any break line, so it looks for the next ":" from the previous one
+			nextKeyIndex2 := strings.Index(content[startIndex+nextKeyIndex:], ":")+1
+			endIndex = strings.LastIndex(content[startIndex:startIndex+nextKeyIndex+nextKeyIndex2], "\n")
+
+			//if there's still no endIndex, return empty string
+			if endIndex == -1 {
+				return ""
+			}
 		}
 	}
-	return strings.TrimSpace(content[startIndex:endIndex+startIndex])
+	return strings.TrimSpace(content[startIndex : endIndex+startIndex])
 }
 
-func createJsonFile(mailsArray []models.Mail, fileName string) error {
+//Function that calls files processing and creates the json file that holds the information of every email
+func CreateJsonFile(rootFolder string, fileName string, indexName string) error {
 	if _, err := os.Stat(fileName); os.IsNotExist(err) {
 		// El archivo no existe, se puede crear
+		mailsArray, err := processFilesInFolder(rootFolder)
+		if err != nil {
+			return fmt.Errorf("Error al procesar los archivos: %v", err)
+		}
+		var request models.IndexRequest
+		request.Index = indexName
+		request.Records = mailsArray
+
 		file, err := os.Create(fileName)
 		if err != nil {
 			return err
@@ -135,15 +166,16 @@ func createJsonFile(mailsArray []models.Mail, fileName string) error {
 
 		writer := bufio.NewWriter(file)
 		encoder := json.NewEncoder(writer)
-		encoder.Encode(mailsArray)
+		encoder.Encode(request)
 
 		// Vaciar el búfer en el archivo subyacente
 		err = writer.Flush()
 		if err != nil {
 			return err
 		}
-		fmt.Println("archivo enron_email.json creado correctamente")
-	} 
-	
+		fmt.Printf("archivo %s.json creado correctamente\n", indexName)
+		return nil
+	}
+	fmt.Printf("archivo %s.json ya disponible\n", indexName)
 	return nil
 }
