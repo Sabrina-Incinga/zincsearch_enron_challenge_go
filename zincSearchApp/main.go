@@ -22,8 +22,8 @@ func main(){
 
 	r.Get("/search", controllers.GetMails)
 
-	http.ListenAndServe(":9000", r)
 	fmt.Print("App escuchando en puerto :9000")
+	http.ListenAndServe(":9000", r)
 }
 
 func customCorsMiddleware(next http.Handler) http.Handler {

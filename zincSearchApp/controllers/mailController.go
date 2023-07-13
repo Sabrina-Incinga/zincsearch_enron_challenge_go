@@ -16,9 +16,13 @@ func GetMails(w http.ResponseWriter, r *http.Request) {
 	maxResults := r.URL.Query().Get("max")
 
 	fromInt, err := strconv.Atoi(from)
+	if err != nil {
+		http.Error(w, "Error al convertir a entero, la variable from debe ser un número entero: "+err.Error(), http.StatusBadRequest)
+		return
+	}
 	maxResultsInt, err := strconv.Atoi(maxResults)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Error al convertir a entero, la variable max debe ser un número entero: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 
