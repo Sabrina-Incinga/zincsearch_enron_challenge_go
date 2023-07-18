@@ -11,15 +11,17 @@
       <p class="mt-1 text-xs leading-5 text-gray-500 content"><time datetime="2023-01-23T13:23Z">{{ mail.Date }}</time></p>
     </div>
     <div>
-      <button class="rounded bg-indigo-500 px-2 text-slate-50 me-2">
+      <button :id="`modal-open-${mail.ID}`" class="modal-open bg-transparent border border-gray-500 hover:border-indigo-500 text-gray-500 hover:text-indigo-500 font-bold py-2 px-4 rounded-full" type="button" >
         Ver detalles
       </button>
     </div>
   </li>
+  <MailItemModal :key="mail.ID" :mail="mail"/>
 </template>
 
 <script setup lang="ts">
 import { type Mail } from '@/types/mailTypes';
+import MailItemModal from './MailItemModal.vue';
 
 defineProps<{
   mail: Mail

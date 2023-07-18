@@ -13,7 +13,7 @@
     <MailGridHeader />
   </ul>
   <ul role="list" class="divide-y divide-gray-100" v-if="state.apiResult">
-    <MailItem v-for="mail in state.apiResult" :key="mail.ID" :mail="mail" :isHeader="false"/>
+    <MailItem v-for="mail in state.apiResult" :key="mail.ID" :mail="mail"/>
   </ul>
 </template>
 
