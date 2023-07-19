@@ -1,7 +1,6 @@
 package zincsearchIndexer
 
 import (
-	"embed"
 	"fmt"
 	"io"
 	"log"
@@ -12,11 +11,8 @@ import (
 	"github.com/zincsearch_enron_challenge_go/zincSearchApp/zincsearchIndexer/variablesHandler"
 )
 
-//go:embed data/*
-var data embed.FS
-
 // Function that calls the creation of the json file to upload the data to the index, calls data upload to index and creates profiles to record performance
-func RunFilesIndexer() error{
+func RunFilesIndexer() error {
 	indexConfig, err := variablesHandler.LoadEnvVariables()
 	if err != nil {
 		return fmt.Errorf("Error al cargar variables de entorno: %v", err)
@@ -33,14 +29,14 @@ func RunFilesIndexer() error{
 		}
 		defer cpuProfileFile.Close()
 
-		err = pprof.StartCPUProfile(cpuProfileFile);
+		err = pprof.StartCPUProfile(cpuProfileFile)
 		if err != nil {
 			return fmt.Errorf("Error al iniciar el perfil de CPU: %v", err)
 		}
 		defer pprof.StopCPUProfile()
 
 		//Default root folder where enron email files are located
-		rootFolder := "C:/Users/USUARIO/Desktop/Sabrina/Go/src/PruebaTecnica/enron_mail_20110402/maildir"
+		rootFolder := indexConfig.FilesPath
 
 		//name of the .json file that contains all emails files information
 		filepath := fmt.Sprintf("zincsearchIndexer/data/%s.json", indexConfig.IndexName)
@@ -48,7 +44,7 @@ func RunFilesIndexer() error{
 		if err != nil {
 			return fmt.Errorf("Error al crear archivo json: %v", err)
 		}
-		
+
 		fmt.Printf("El índice %s está creándose...\n", indexConfig.IndexName)
 		//Upload .json file data to index if it doesn't exist
 		uploadDataToIndex(filepath, indexConfig)
@@ -64,7 +60,7 @@ func RunFilesIndexer() error{
 		if err != nil {
 			return fmt.Errorf("Error al escribir el perfil de memoria: %v", err)
 		}
-	} else{ 
+	} else {
 		fmt.Printf("El índice %s ya existe\n", indexConfig.IndexName)
 	}
 
@@ -112,7 +108,7 @@ func validateIndexExistence(indexConfig variablesHandler.IdexConfig) (bool, erro
 	if err != nil {
 		return false, err
 	}
-	
+
 	var url string = fmt.Sprintf("%s/index/%s", indexConfig.BaseUrl, indexConfig.IndexName)
 
 	validateIndexExistenceReq, err := http.NewRequest(http.MethodHead, url, nil)

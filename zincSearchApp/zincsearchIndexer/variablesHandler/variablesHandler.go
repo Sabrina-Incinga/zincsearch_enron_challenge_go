@@ -2,14 +2,16 @@ package variablesHandler
 
 import (
 	"os"
+
 	"github.com/joho/godotenv"
 )
 
 type IdexConfig struct {
-	BaseUrl		string
-	UserName    string
-	Password 	string
-	IndexName  	string
+	BaseUrl   string
+	UserName  string
+	Password  string
+	IndexName string
+	FilesPath string
 }
 
 func LoadEnvVariables() (IdexConfig, error) {
@@ -18,9 +20,10 @@ func LoadEnvVariables() (IdexConfig, error) {
 		return IdexConfig{}, err
 	}
 	return IdexConfig{
-		BaseUrl: os.Getenv("baseUrl"),
-		UserName: os.Getenv("userName"),
-		Password: os.Getenv("password"),
+		BaseUrl:   os.Getenv("baseUrl"),
+		UserName:  os.Getenv("userName"),
+		Password:  os.Getenv("password"),
 		IndexName: os.Getenv("indexName"),
+		FilesPath: os.Getenv("filesPath"),
 	}, nil
 }
